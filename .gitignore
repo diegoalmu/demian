@@ -1,0 +1,25 @@
+# Secretos y configuración local
+.env
+*.env
+.cloudflared/
+*.json.key
+*credentials*.json
+
+# Configuración local de OpenClaw
+.openclaw/
+
+# Backups
+*.tar.gz
+*.zip
+backups/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+
+# Editor
+.vscode/
+.idea/
