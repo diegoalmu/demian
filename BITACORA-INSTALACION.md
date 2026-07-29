@@ -55,19 +55,51 @@
 
 ---
 
-## 🔄 En progreso
+## ✅ Completado (continuación — 29 de julio)
 
 ### 6. Instalación de Ollama
 - `curl -fsSL https://ollama.com/install.sh | sh` → falló la primera vez: `ERROR: This version requires zstd for extraction`.
 - Solución: `sudo apt-get install zstd -y`, luego reintentar la instalación.
-- Estado al momento de esta bitácora: descarga en progreso (~82%).
+- `sudo systemctl enable --now ollama` → activo y persistente.
+- `ollama pull llama3.2:3b` → descargado con éxito (2GB).
 
-### Pendiente después de Ollama:
-- [ ] `sudo systemctl enable --now ollama`
-- [ ] Confirmar `systemctl status ollama` → `active (running)`
-- [ ] `ollama pull llama3.2:3b` (modelo ligero para CPU sin GPU)
-- [ ] Configurar Ollama como proveedor de modelo en OpenClaw (`openclaw onboard`)
-- [ ] Probar `talk to agent` con Ollama
+### 7. Auditoría de seguridad
+- `openclaw security audit` detectó 3 warnings, el principal: `gateway.controlUi.allowInsecureAuth=true`.
+- Corregido editando `~/.openclaw/openclaw.json` → `"allowInsecureAuth": false`, reinicio del Gateway.
+- Quedó 1 solo warning restante (`gateway.trusted_proxies_missing`) — **no urgente ahora, pendiente para cuando se configure Cloudflare Tunnel** (hay que setear `gateway.trustedProxies` con las IPs del proxy en ese momento).
+
+### 8. Mitigación de crash-loop de Ollama en WSL2
+- OpenClaw detectó automáticamente el riesgo: `ollama.service` con `Restart=always` + CUDA visible (aunque no hay GPU real) puede pinear memoria y provocar que Windows reinicie la VM de WSL2 completa.
+- Mitigación aplicada (la menos invasiva de las 3 sugeridas): `sudo systemctl edit ollama` → agregar `Environment="OLLAMA_KEEP_ALIVE=5m"` → `daemon-reload` + `restart ollama`.
+- Referencia: https://github.com/ollama/ollama/issues/11317
+
+### 9. Configuración de Ollama como proveedor en OpenClaw
+- `openclaw onboard` → `configure a model provider` → **Ollama** → modo **Local only** (no "Cloud + Local" ni "Ollama Cloud", para no depender de nada externo).
+- Base URL: `http://127.0.0.1:11434` (default detectado automáticamente, sin modificar).
+- Modelo seleccionado del catálogo real: `ollama/llama3.2:3b` — a diferencia de OpenRouter, Ollama sí lista correctamente los modelos instalados localmente, sin necesidad de adivinar IDs.
+
+### 10. Error de sesión colgada (resuelto — no era problema de modelo)
+- Al escribir `talk to agent`, apareció: `Which agent would you like to talk to?` repetidamente sin importar la respuesta.
+- Se intentó seguir la sugerencia literal del propio Crestodian ("switch to your agent TUI"), pero esto llevó a un comportamiento errático — el modelo empezó a inventar pasos de configuración que no correspondían (reconfigurar autenticación, volver a preguntar por proveedor ya configurado). **Lección: cuando un asistente en modo determinístico empieza a "alucinar" pasos que no tienen sentido con lo ya configurado, mejor cortar y reiniciar limpio que seguirle la corriente.**
+- Causa raíz real (encontrada en los logs vía `journalctl` y el archivo `/tmp/openclaw/openclaw-*.log`): esa sesión vieja de Crestodian tenía una restricción `runtime toolsAllow: crestodian`, pero el perfil de herramientas activo (`tools.profile: coding`) eliminaba esa misma herramienta de la lista disponible — quedando con **cero herramientas utilizables**, de ahí el error `No callable tools remain after resolving explicit tool allowlist`. No tenía relación con el modelo (pasó igual con OpenRouter y con Ollama).
+- Solución: abandonar esa sesión colgada, usar directamente `openclaw tui` (entra derecho al agente `main`, sin pasar por Crestodian) y reiniciar el Gateway limpio con `systemctl --user restart openclaw-gateway`.
+
+### 🎉 Hito: primera respuesta exitosa del agente
+```
+hola, ¿estás funcionando?
+I'm functioning properly. How can I assist you today?
+```
+Con `ollama/llama3.2:3b`, 100% local, ~40 segundos de respuesta (esperado en CPU sin GPU dedicada). Confirma el flujo completo: WSL2 → systemd → OpenClaw Gateway → Ollama → respuesta del modelo.
+
+---
+
+## 🔄 En progreso
+
+### Pendiente:
+- [ ] Conectar Telegram como canal de acceso
+- [ ] Evaluar si conviene agregar una GPU a Endor PC para modelos más grandes (pendiente de confirmar tipo de gabinete/PSU)
+- [ ] Configurar Cloudflare Tunnel + resolver el warning de `trusted_proxies_missing` en ese momento
+- [ ] Definir vault de Obsidian y su ruta de sincronización
 
 ---
 
