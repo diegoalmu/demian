@@ -146,15 +146,62 @@ Se encontró una advertencia de la comunidad: guardar datos de agentes en `/mnt/
 
 ---
 
+## ✅ Completado (continuación — 31 de julio, tarde)
+
+### 13. Migración del vault: de Google Drive a disco local
+- Vault original vivía en `G:\Mi unidad\OBSIDIAN\` — unidad **virtual** creada por Google Drive en modo "Transmitir archivos" (Stream), **no accesible desde WSL2** (`ls /mnt/` solo mostraba `c`, `wsl`, `wslg`; confirmado también que no aparece como unidad de red vía `net use`).
+- Decisión: eliminar la capa de Google Drive por completo — ya se tiene sincronización real y versionada vía Git/GitHub Desktop, que es redundante con Drive y más simple sin él.
+- Migración manual: contenido movido de `G:\Mi unidad\OBSIDIAN\` a `C:\Users\diego\OBSIDIAN\` (sí visible desde WSL2 en `/mnt/c/Users/diego/OBSIDIAN/`, sin la penalización de rendimiento de rutas `/mnt/g/` ni las capas extra de sincronización de Drive).
+- Reapuntado Obsidian a la nueva ruta (ahora reconoce dos vaults independientes: `demian` y `bitacora_aztlan`, cada uno con su propio `.obsidian/`).
+- Reapuntado GitHub Desktop con "Locate..." a la nueva ubicación del repo — sincronización confirmada funcionando.
+
+**Estructura resultante:**
+```
+C:\Users\diego\OBSIDIAN\
+  demian\              ← vault del proyecto (memoria del agente + docs del repo)
+  bitacora_aztlan\      ← vault del diario personal (NO tocado por el agente)
+```
+
+### 14. Skill de Obsidian instalado
+- Se encontraron 4 skills con el slug "obsidian" en ClawHub — se eligió **`@steipete/obsidian`** por ser del propio creador de OpenClaw (Peter Steinberger), la fuente más confiable de las 4.
+- `clawhub install` (sin `npx`) dio `command not found` — mismo patrón de PATH que con `openclaw` al inicio. Solución: usar `npx clawhub@latest install @steipete/obsidian`.
+- **Hallazgo importante**: instalar un "skill" vía ClawHub no lo registra como "plugin" de OpenClaw con su propio campo de configuración (`openclaw config set plugins.entries.obsidian...` dio warning `plugin not found: obsidian (stale config entry ignored)`). Un skill funciona distinto: es un conjunto de instrucciones que el agente usa cuando se le da el contexto directamente en la conversación (ej. la ruta del vault), no algo que se configure una sola vez de forma persistente vía JSON.
+
+### 🎉 Hito: memoria de Obsidian funcionando de extremo a extremo (corregido)
+
+**Primera prueba (invalidada):** Se le pidió al agente escribir una nota de prueba, y "funcionó" — pero se detectó después que el comando `mkdir -p ... && echo ...` ya lo había corrido Diego manualmente en la terminal de Ubuntu en un paso anterior de la sesión. La prueba no demostraba que el agente ejecutara nada por su cuenta.
+
+**Segunda prueba (también falló, pero reveló la causa real):** Se borró el archivo y se le pidió al agente crear una nota nueva vía Telegram (sin tocar la terminal). El agente respondió repetidamente "ya la creé" en loop, pero el archivo **no existía en disco** — estaba alucinando la ejecución. Causa raíz encontrada:
+```
+"profile": "messaging"
+```
+Este perfil (configurado días atrás para contener a `qwen2.5:3b`, que se enredaba con herramientas) **no incluye herramientas de sistema de archivos/shell** — solo permite conversación. El agente no tenía forma real de escribir el archivo, y en vez de decir "no puedo", alucinó que lo había hecho.
+
+**Solución:**
+```bash
+openclaw config set tools.profile coding
+systemctl --user stop openclaw-gateway
+sleep 3
+systemctl --user start openclaw-gateway
+```
+Con `tools.profile: coding` + Gemini (que sí maneja herramientas con criterio, a diferencia de los modelos locales), la tercera prueba fue exitosa y verificada de forma inequívoca: nota creada desde Telegram, confirmada en el Explorador de Windows sin usar la terminal.
+
+**Lección aprendida:** Cuando un agente dice "ya lo hice" pero el resultado no aparece, verificar dos cosas antes de asumir un bug del skill: (1) si el perfil de herramientas activo (`tools.profile`) realmente incluye la categoría de herramienta necesaria, y (2) si la prueba está genuinamente aislada de cualquier acción manual previa del propio usuario en la misma sesión de trabajo.
+
+### Nota pendiente para uso continuo
+Como el skill no tiene una ruta de vault "recordada" de forma persistente en la configuración, cada vez que se le pida al agente trabajar con el vault, hay que **darle la ruta explícitamente** (o considerar agregarla al `USER.md` como contexto permanente, ya que ese sí se lee siempre) — pendiente de decidir cuál enfoque conviene más.
+
+---
+
 ## 🔄 En progreso
 
 ### Pendiente:
-- [ ] Confirmar Telegram funcionando de forma estable con Gemini (última prueba fue en TUI, falta reconfirmar en Telegram tras el cambio de modelo)
-- [ ] Acceso visual local vía navegador (`openclaw dashboard`, `http://127.0.0.1:18789/`)
-- [ ] Conectar skill de Obsidian (con la reserva pendiente sobre rendimiento en `/mnt/c/`)
+- [ ] Decidir cómo persistir la ruta del vault para el agente (¿`USER.md` o repetirla cada vez?)
 - [ ] Configurar Cloudflare Tunnel + resolver `trusted_proxies_missing`
+- [ ] Detener Ollama de forma permanente (`sudo systemctl disable ollama && sudo systemctl stop ollama`) — pendiente de confirmar que ya se ejecutó
 - [ ] Evaluar laptop (Ryzen 7 5700U, gráficos integrados — no resuelve la necesidad de GPU dedicada) como posible migración futura
 - [ ] Decidir si se integra OpenCode para tareas de programación
+- [ ] Limpiar entradas viejas de modelos fallidos en `openclaw.json` (`agents.defaults.models`)
 
 ---
 
