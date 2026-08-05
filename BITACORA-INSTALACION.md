@@ -193,15 +193,28 @@ Como el skill no tiene una ruta de vault "recordada" de forma persistente en la 
 
 ---
 
+## ✅ Completado (continuación — 4 de agosto)
+
+### 15. Limpieza de pendientes de la sesión anterior
+- **Ollama detenido permanentemente**: `sudo systemctl disable ollama && sudo systemctl stop ollama` → confirmado `inactive (dead)`. Ya no aparece la advertencia de "WSL2 crash-loop risk" en el arranque del Gateway.
+- **Ruta del vault agregada a `USER.md`** de forma persistente:
+  ```
+  - Vault de Obsidian del proyecto Demian: /mnt/c/Users/diego/OBSIDIAN/demian
+  ```
+- **Limpieza de `openclaw.json`**:
+  - Bloque `agents.defaults.models` reducido de 9 entradas (con todos los intentos fallidos de OpenRouter/Ollama) a solo 2: `google/gemini-2.5-flash` (activo) y `ollama/qwen2.5:7b` (respaldo offline futuro).
+  - Entrada obsoleta `plugins.entries.obsidian` eliminada (el skill de ClawHub no se registra como plugin con config propia — ya lo sabíamos, esta entrada era vestigial).
+  - **Cuidado importante al editar JSON a mano en `nano`**: fácil dejar una coma de más o de menos al borrar/mover entradas. Flujo seguro usado: editar → `openclaw config validate` (sin reiniciar nada) → solo si valida OK, recién ahí `systemctl stop/start`. Este flujo evitó dejar el Gateway caído por un JSON inválido.
+  - Confirmado tras reinicio: `Config valid`, sin warnings, `agent model: google/gemini-2.5-flash` cargando correctamente.
+
+---
+
 ## 🔄 En progreso
 
 ### Pendiente:
-- [ ] Decidir cómo persistir la ruta del vault para el agente (¿`USER.md` o repetirla cada vez?)
 - [ ] Configurar Cloudflare Tunnel + resolver `trusted_proxies_missing`
-- [ ] Detener Ollama de forma permanente (`sudo systemctl disable ollama && sudo systemctl stop ollama`) — pendiente de confirmar que ya se ejecutó
 - [ ] Evaluar laptop (Ryzen 7 5700U, gráficos integrados — no resuelve la necesidad de GPU dedicada) como posible migración futura
 - [ ] Decidir si se integra OpenCode para tareas de programación
-- [ ] Limpiar entradas viejas de modelos fallidos en `openclaw.json` (`agents.defaults.models`)
 
 ---
 
