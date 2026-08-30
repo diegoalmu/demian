@@ -255,7 +255,14 @@ Entre la sesión del 5 de agosto y esta (30 de agosto), se realizó una migraci�
 - El modelo simplemente no está decidiendo invocar la herramienta (posible tema de prompt/instrucción, no de configuración).
 - La herramienta `web_search` podría no estar registrada como disponible en esta versión/instalación pese a la configuración de proveedor (pendiente confirmar con `agents_list` de herramientas o revisando plugins cargados en el log de arranque: `http server listening (N plugins: ...)`).
 
-**Próximo paso sugerido**: revisar la línea de log `[gateway] http server listening (N plugins: ...)` al arrancar el Gateway, y confirmar si `google` o algún plugin de búsqueda aparece en esa lista de plugins activos.
+**Actualización del diagnóstico — causa raíz real encontrada**: el problema **no era `web_search` en absoluto** — era que **Gemini 2.5 Flash estaba saturado del lado de Google** (`503 UNAVAILABLE — high demand`) para *cualquier* solicitud, no solo para búsqueda. Confirmado porque:
+- El error idéntico ocurría con mensajes que no requerían búsqueda en absoluto.
+- Cambiar el proveedor de búsqueda a `duckduckgo` (sin API key, sin relación con Google) **no cambió el error** — porque el fallo ocurre antes de siquiera intentar buscar, en la generación de la respuesta del modelo en sí.
+- Los logs muestran una progresión de `503` (servicio sobrecargado) a **`429`** (rate limit / cuota excedida) tras varios intentos seguidos en poco tiempo — probablemente agravado por la cantidad de pruebas hechas en esta sesión de diagnóstico.
+
+**Conclusión**: no hay nada mal configurado. Es un problema temporal del lado de Google. **Acción tomada**: pausar todos los mensajes por al menos 10-15 minutos para dejar que se enfríe cualquier límite de tasa antes de reintentar.
+
+**Próximo paso real**: cuando se retome, probar primero un mensaje simple sin pedir búsqueda (para confirmar que el modelo en general ya respondió), y solo después probar específicamente la búsqueda web.
 
 ### Lección aprendida (proceso de trabajo)
 Cuando el trabajo se retoma después de un corte de contexto (tokens agotados, sesión nueva), **verificar el estado real en la terminal antes de asumir cualquier configuración previa** — no confiar en el recuerdo de "creo que configuramos X", ya que puede mezclarse entre sesiones distintas o con trabajo hecho con otras herramientas de IA. Esta bitácora existe precisamente para reducir ese riesgo; actualizarla en cada hito es lo que la hace útil.
