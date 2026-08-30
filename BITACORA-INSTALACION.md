@@ -316,6 +316,23 @@ Cuando el trabajo se retoma después de un corte de contexto (tokens agotados, s
 
 ---
 
+### 22. Decisión final: Ollama desinstalado por completo (no solo detenido)
+Tras el diagnóstico de rendimiento (punto 21) y un caso donde Ollama sí completó la generación (53s reales) pero el Gateway lo reportó como fallido (probablemente timeout acumulado del lado de OpenClaw), se decidió **desinstalar Ollama por completo** en vez de solo detenerlo como respaldo.
+```bash
+sudo systemctl stop ollama
+sudo systemctl disable ollama
+sudo rm -rf /usr/share/ollama /etc/systemd/system/ollama.service*
+sudo rm -f /usr/local/bin/ollama
+sudo rm -rf /usr/local/lib/ollama
+```
+Confirmado limpio con `which ollama` (sin resultado) y `systemctl status ollama` (`Unit could not be found`). Nota menor: el grupo de sistema `ollama` no se pudo borrar (`userdel: grupo no eliminado porque tiene otros miembros` — el propio usuario `endoralex` quedó en ese grupo) — cosmético, sin impacto funcional.
+
+**Modelo principal restaurado**: `agents.defaults.model.primary` → `google/gemini-2.5-flash`, listo para cuando la cuota gratuita de la API se resetee (normalmente cada 24h).
+
+**Nota para el futuro**: si se vuelve a necesitar un respaldo local, el proceso de reinstalación completo (Ollama + modelo + override de systemd) toma varios pasos y no es instantáneo — considerar si vale la pena mantenerlo detenido en vez de desinstalado la próxima vez que se instale, dado el costo de tiempo de repetir todo el proceso.
+
+---
+
 ## 🔄 En progreso
 
 ### Pendiente:
