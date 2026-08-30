@@ -232,6 +232,31 @@ Entre la sesión del 5 de agosto y esta (30 de agosto), se realizó una migraci�
 - Causa del fallo original: `web_search` en OpenClaw usa Brave Search por defecto, que requiere API key propia no configurada — sin ella, la herramienta falla (a veces silenciosamente, con el agente alucinando que sí buscó).
 - Solución aplicada: `openclaw config set tools.web.search.provider gemini` — reutiliza la cuenta de Gemini ya configurada, sin necesitar una key nueva de Brave.
 
+### 18. Diagnóstico extenso: `web_search` sigue sin funcionar pese a key correcta
+
+**Contexto**: se solicitó habilitar búsqueda web para uso escolar de los hijos de Diego (21, 17, 15 años) antes de avanzar con Cloudflare.
+
+**Camino de diagnóstico (largo, documentado para no repetirlo):**
+
+1. Configurado `tools.web.search.provider gemini` → seguía fallando con "GEMINI_API_KEY no configurada".
+2. Se probó `plugins.entries.google.config.webSearch.apiKey` vía `config set` → se guardó en el JSON pero el error persistió idéntico.
+3. Se investigó y confirmó (vía `docs.openclaw.ai/tools/web`) que la herramienta también acepta `GEMINI_API_KEY` como variable de entorno — probado vía `~/.openclaw/.env`, **no funcionó** porque el `.service` de systemd no tiene `EnvironmentFile=` apuntando ahí.
+4. Se creó override correcto: `~/.config/systemd/user/openclaw-gateway.service.d/override.conf` con `Environment="GEMINI_API_KEY=..."` → confirmado con `systemctl --user cat` que se aplicó.
+5. **Verificación definitiva de que la key sí llega completa al proceso real** (no solo a la config de systemd):
+   ```bash
+   cat /proc/$(pgrep -f "openclaw.*gateway")/environ | tr '\0' '\n' | grep GEMINI_API_KEY | wc -c
+   ```
+   → devolvió `55`, el largo exacto esperado (`GEMINI_API_KEY=` + 39 caracteres de key + salto de línea). **La key está bien configurada y llega al proceso.**
+6. **Error grave encontrado y corregido en el camino**: al intentar `openclaw config set tools.allow '["group:web"]' --merge --json` para forzar el permiso de `web_search`, el flag `--merge` **no se comportó como merge aditivo** — convirtió `tools.allow` en una lista exclusiva, bloqueando 25+ herramientas que sí funcionaban (`exec`, `read`, `write`, `cron`, etc., incluyendo todo lo de Obsidian). **Revertido** con `openclaw config set tools.allow '[]' --json`. **Lección: no usar `tools.allow` para agregar una sola herramienta sin verificar antes qué contiene el perfil activo — puede convertirse en lista exclusiva y romper todo lo demás.**
+7. Confirmado en logs (`journalctl`) que el modelo responde con `status=200` **sin que se registre ningún intento de llamar a `web_search`** — el modelo ni siquiera está invocando la herramienta, no es un fallo de la herramienta en sí.
+8. Al pedirle al agente listar sus herramientas disponibles (para confirmar si `web_search` aparece registrada), la API de Gemini empezó a devolver: `"The AI service is temporarily overloaded. Please try again in a moment."` — error de saturación del lado de Google, no relacionado con la configuración. **Diagnóstico interrumpido por esta causa externa, pendiente de reintentar.**
+
+**Estado al cierre de esta sesión**: sin resolver. La API key está técnicamente bien configurada y confirmada en el proceso, pero `web_search` no se ejecuta. Hipótesis principales a probar en la próxima sesión:
+- El modelo simplemente no está decidiendo invocar la herramienta (posible tema de prompt/instrucción, no de configuración).
+- La herramienta `web_search` podría no estar registrada como disponible en esta versión/instalación pese a la configuración de proveedor (pendiente confirmar con `agents_list` de herramientas o revisando plugins cargados en el log de arranque: `http server listening (N plugins: ...)`).
+
+**Próximo paso sugerido**: revisar la línea de log `[gateway] http server listening (N plugins: ...)` al arrancar el Gateway, y confirmar si `google` o algún plugin de búsqueda aparece en esa lista de plugins activos.
+
 ### Lección aprendida (proceso de trabajo)
 Cuando el trabajo se retoma después de un corte de contexto (tokens agotados, sesión nueva), **verificar el estado real en la terminal antes de asumir cualquier configuración previa** — no confiar en el recuerdo de "creo que configuramos X", ya que puede mezclarse entre sesiones distintas o con trabajo hecho con otras herramientas de IA. Esta bitácora existe precisamente para reducir ese riesgo; actualizarla en cada hito es lo que la hace útil.
 
@@ -240,7 +265,9 @@ Cuando el trabajo se retoma después de un corte de contexto (tokens agotados, s
 ## 🔄 En progreso
 
 ### Pendiente:
-- [ ] Configurar firewall (`ufw`) para acceso a internet controlado — en definición ahora
+- [ ] Resolver `web_search` — key confirmada correcta en el proceso, pero la herramienta no se invoca (ver diagnóstico punto 18). Retomar revisando plugins activos en el log de arranque.
+- [ ] Confirmar plan de acceso para los hijos de Diego (21, 17, 15 años) — sub-agente separado con perfil de herramientas acotado, antes de exponer con Cloudflare
+- [ ] Configurar firewall (`ufw`) — YA HECHO el 30 de agosto: `deny incoming`, `allow outgoing`, SSH permitido, activo
 - [ ] Configurar Cloudflare Tunnel + resolver `trusted_proxies_missing`
 - [ ] Evaluar laptop (Ryzen 7 5700U, gráficos integrados — no resuelve la necesidad de GPU dedicada) como posible migración futura
 - [ ] Decidir si se integra OpenCode para tareas de programación
