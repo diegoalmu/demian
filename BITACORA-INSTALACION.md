@@ -264,6 +264,53 @@ Entre la sesión del 5 de agosto y esta (30 de agosto), se realizó una migraci�
 
 **Próximo paso real**: cuando se retome, probar primero un mensaje simple sin pedir búsqueda (para confirmar que el modelo en general ya respondió), y solo después probar específicamente la búsqueda web.
 
+### 19. Causa raíz real de todos los fallos: cuota gratuita de la API de Gemini agotada
+
+Tras el diagnóstico extenso de `web_search` (punto 18), se confirmó la causa raíz real revisando logs con el error específico:
+```
+Google Generative AI API error (429): You exceeded your current quota, please check your plan and billing details. [code=RESOURCE_EXHAUSTED]
+```
+
+**Aclaración importante para el proyecto**: la suscripción de **Gemini Plus** (la app de consumo, tipo Google One) es un producto **separado** de la **API de Gemini para desarrolladores** (la que usa OpenClaw vía `generativelanguage.googleapis.com`). Tener Gemini Plus **no** otorga cuota ilimitada ni mayor en la API — esta tiene su propio tier gratuito limitado, independiente de la suscripción de consumo. Las docenas de peticiones hechas durante el diagnóstico de `web_search` agotaron esa cuota gratuita diaria.
+
+**Decisión tomada**: no habilitar facturación en Google Cloud por ahora (evitar gasto no controlado durante fase de pruebas). Se opta por:
+- Esperar el reset diario de la cuota gratuita.
+- Mantener Ollama como respaldo local para cuando la cuota de Gemini esté agotada.
+- **Precaución para el futuro**: evitar sesiones de diagnóstico con muchos reintentos seguidos contra la API de Gemini — cada intento (exitoso o fallido) consume cuota.
+
+### 20. Ollama no sobrevivió la migración a Linux Mint — reinstalado desde cero
+- Confirmado con `which ollama` (sin resultado) y `systemctl status ollama` (`Unit could not be found`): Ollama **no estaba instalado** en la instalación de Mint — no se puede reactivar un servicio que nunca se instaló aquí. Toda la instalación anterior de Ollama vivía en el sistema Windows+WSL2 ya eliminado.
+- **Hardware confirmado en Mint nativo**: mismo procesador que siempre, **Intel i5-8400T** (6 núcleos, sin GPU dedicada) — la migración a Mint no cambió el hardware, solo quitó la capa de virtualización. RAM total ahora visible: **31GB** (vs. 15GB que WSL2 exponía), con ~23GB libres.
+- Reinstalación limpia, sin el problema de `zstd` faltante que hubo en WSL2:
+  ```bash
+  curl -fsSL https://ollama.com/install.sh | sh
+  ollama pull qwen2.5:7b
+  ```
+- Confirmado: "WARNING: No NVIDIA/AMD GPU detected. Ollama will run in CPU-only mode" — esperado, no hay GPU en este hardware.
+- Mitigación de memoria aplicada igual que en la instalación anterior — **de nuevo** `sudo systemctl edit ollama` guardó el archivo **vacío** (mismo bug/comportamiento que con OpenClaw el 30 de julio). Solución igual que la vez pasada: crear el override manualmente:
+  ```bash
+  sudo mkdir -p /etc/systemd/system/ollama.service.d
+  sudo nano /etc/systemd/system/ollama.service.d/override.conf
+  # [Service]
+  # Environment="OLLAMA_KEEP_ALIVE=5m"
+  sudo systemctl daemon-reload
+  sudo systemctl restart ollama
+  ```
+  **Nota para el futuro**: `systemctl edit` (tanto `--user` como con `sudo` para servicios de sistema) parece no guardar correctamente en este flujo de trabajo — ir directo al método manual de crear `override.conf` ahorra un ciclo de diagnóstico.
+
+### 21. Diagnóstico de lentitud extrema al probar Ollama (5+ minutos sin respuesta)
+
+Al probar `qwen2.5:7b` recién instalado, una consulta simple tardó más de 5 minutos con la CPU al máximo. Diagnóstico vía `journalctl -u ollama`:
+```
+truncating input prompt limit=2050 prompt=17191 keep=4 new=2050
+...
+prompt processing, n_tokens = 1536, progress = 0.75, t = 120.51 s / 12.75 tokens per second
+```
+
+**Causa real**: no es un bug — el contexto acumulado en la sesión (17,191 tokens, posiblemente arrastrando historial pese al `/new`) se truncó a 2050 tokens límite, y el hardware (i5-8400T, sin GPU) procesa esos tokens de entrada a ~13 tokens/segundo. A ese ritmo, cualquier prompt con contexto sustancial toma varios minutos solo para *procesar la entrada*, antes de generar la respuesta.
+
+**Conclusión reforzada**: Ollama en este hardware es viable únicamente para mensajes cortos y sin historial acumulado (sesión recién limpiada con `/new`). Para cualquier conversación con contexto real, la espera es impráctica. Esto confirma, con datos concretos de rendimiento, la decisión ya tomada de usar Gemini como modelo principal y reservar Ollama estrictamente como respaldo de emergencia de corta duración.
+
 ### Lección aprendida (proceso de trabajo)
 Cuando el trabajo se retoma después de un corte de contexto (tokens agotados, sesión nueva), **verificar el estado real en la terminal antes de asumir cualquier configuración previa** — no confiar en el recuerdo de "creo que configuramos X", ya que puede mezclarse entre sesiones distintas o con trabajo hecho con otras herramientas de IA. Esta bitácora existe precisamente para reducir ese riesgo; actualizarla en cada hito es lo que la hace útil.
 
@@ -272,9 +319,10 @@ Cuando el trabajo se retoma después de un corte de contexto (tokens agotados, s
 ## 🔄 En progreso
 
 ### Pendiente:
-- [ ] Resolver `web_search` — key confirmada correcta en el proceso, pero la herramienta no se invoca (ver diagnóstico punto 18). Retomar revisando plugins activos en el log de arranque.
+- [ ] Confirmar que Gemini volvió a responder tras reset de cuota; volver a poner `google/gemini-2.5-flash` como `agents.defaults.model.primary` (se dejó en `ollama/qwen2.5:7b` temporalmente el 30 de agosto)
+- [ ] Resolver `web_search` de forma definitiva una vez que la cuota de Gemini esté disponible de nuevo (causa de fondo ya no es un misterio — era cuota agotada, no configuración)
+- [ ] Rotar las 3 credenciales expuestas en chat el 30 de agosto: token del Gateway, API key de Gemini, token del bot de Telegram
 - [ ] Confirmar plan de acceso para los hijos de Diego (21, 17, 15 años) — sub-agente separado con perfil de herramientas acotado, antes de exponer con Cloudflare
-- [ ] Configurar firewall (`ufw`) — YA HECHO el 30 de agosto: `deny incoming`, `allow outgoing`, SSH permitido, activo
 - [ ] Configurar Cloudflare Tunnel + resolver `trusted_proxies_missing`
 - [ ] Evaluar laptop (Ryzen 7 5700U, gráficos integrados — no resuelve la necesidad de GPU dedicada) como posible migración futura
 - [ ] Decidir si se integra OpenCode para tareas de programación
