@@ -209,12 +209,42 @@ Como el skill no tiene una ruta de vault "recordada" de forma persistente en la 
 
 ---
 
+## ⚠️ Nota sobre continuidad entre sesiones de trabajo
+
+Debido a límites de tokens en conversaciones largas con Claude, el trabajo de este proyecto a veces continúa en conversaciones nuevas que no tienen acceso al historial de la anterior. Esta bitácora es la memoria compartida entre esas sesiones — **mantenerla actualizada después de cada cambio importante es crítico**, no opcional.
+
+## ✅ Completado (continuación — 30 de agosto)
+
+### 16. Migración de sistema operativo: Windows 11 + WSL2 → Linux Mint 22.3 nativo
+Entre la sesión del 5 de agosto y esta (30 de agosto), se realizó una migración completa de Endor PC de Windows 11 con WSL2 a **Linux Mint 22.3 nativo** (Windows eliminado por completo). Esta migración se hizo en una sesión de trabajo distinta cuyo historial no está disponible — se reconstruyó el estado por verificación directa en terminal, no por continuidad de contexto.
+
+**Beneficio esperado de la migración:** elimina de raíz el problema de rendimiento de `/mnt/c/` documentado en sesiones anteriores, y simplifica la arquitectura al quitar la capa WSL2 completa.
+
+**Estado verificado tras la migración (30 de agosto):**
+- ✅ Vault de Obsidian sobrevivió: ahora en `/home/endoralex/OBSIDIAN/demian` (ruta nativa, ya sin prefijo `/mnt/c/`)
+- ✅ `~/.openclaw/workspace/IDENTITY.md` y `USER.md` sobrevivieron intactos (nombre "Demian", idioma español, ruta de vault actualizada)
+- ✅ Modelo sigue configurado correctamente: `google/gemini-2.5-flash`
+- ⚠️ **Encontrado y corregido**: el archivo de servicio `~/.config/systemd/user/openclaw-gateway.service` existía (creado 12 de agosto, durante la migración) pero **no estaba activado** — el Gateway corría como proceso suelto lanzado manualmente (`ps aux` lo mostró sin supervisión de systemd). Esto significaba que un reinicio de la PC o cerrar la terminal habría tumbado a Demian sin que se levantara solo.
+  - Solución: `kill <PID_del_proceso_suelto>` → `systemctl --user daemon-reload && systemctl --user enable openclaw-gateway && systemctl --user start openclaw-gateway` → confirmado `active (running)` como servicio real.
+- ❓ **Sin confirmar / probablemente nunca implementado**: se mencionó en esta sesión una supuesta configuración inicial de "bloqueo total de red (nada entra, nada sale)" como medida de seguridad de base. Verificado con `sudo ufw status verbose` → **`ufw` está inactivo**, sin ninguna regla. No hay registro de esta configuración en ninguna sesión anterior documentada aquí. Conclusión: o se perdió por completo en la migración, o era una intención que nunca se llegó a implementar, o corresponde a una sesión con otra IA (Gemini/Kimi/Qwen/DeepSeek) que Diego evalúa en paralelo. **No se puede confirmar retroactivamente — se documenta como pendiente a definir desde cero, no como regresión de algo que sabemos que existió.**
+
+### 17. Web search habilitado con Gemini como proveedor
+- Causa del fallo original: `web_search` en OpenClaw usa Brave Search por defecto, que requiere API key propia no configurada — sin ella, la herramienta falla (a veces silenciosamente, con el agente alucinando que sí buscó).
+- Solución aplicada: `openclaw config set tools.web.search.provider gemini` — reutiliza la cuenta de Gemini ya configurada, sin necesitar una key nueva de Brave.
+
+### Lección aprendida (proceso de trabajo)
+Cuando el trabajo se retoma después de un corte de contexto (tokens agotados, sesión nueva), **verificar el estado real en la terminal antes de asumir cualquier configuración previa** — no confiar en el recuerdo de "creo que configuramos X", ya que puede mezclarse entre sesiones distintas o con trabajo hecho con otras herramientas de IA. Esta bitácora existe precisamente para reducir ese riesgo; actualizarla en cada hito es lo que la hace útil.
+
+---
+
 ## 🔄 En progreso
 
 ### Pendiente:
+- [ ] Configurar firewall (`ufw`) para acceso a internet controlado — en definición ahora
 - [ ] Configurar Cloudflare Tunnel + resolver `trusted_proxies_missing`
 - [ ] Evaluar laptop (Ryzen 7 5700U, gráficos integrados — no resuelve la necesidad de GPU dedicada) como posible migración futura
 - [ ] Decidir si se integra OpenCode para tareas de programación
+- [ ] Actualizar `INSTALACION.md` y `ARQUITECTURA.md` para reflejar Linux Mint nativo (actualmente documentan Windows+WSL2)
 
 ---
 
