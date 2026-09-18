@@ -47,7 +47,7 @@ Tu hardware (CPU sin GPU dedicada) es la restricción real del proyecto — hay 
 - [ ] `wsl --install`, Ubuntu, verificar `wsl -l -v` → VERSION 2.
 - [ ] Instalar OpenClaw: `curl -fsSL https://openclaw.ai/install.sh | bash && openclaw onboard --install-daemon`.
 - [ ] **Verificar el puerto real** que asigna tu instalación (`openclaw gateway status`) antes de asumir 18789 — documentarlo una vez confirmado.
-- [ ] **Dominio unificado**: usar `claw.tu-dominio.example` en toda la documentación y configuración (no dejar placeholders genéricos sueltos).
+- [ ] **Dominio unificado**: usar `claw.tu-dominio.ejemplo` en toda la documentación y configuración (no dejar placeholders genéricos sueltos).
 - [ ] **Corte de luz / BIOS**: configurar en BIOS "Restore on AC Power Loss" para que Endor PC vuelva a encender solo tras un corte — sin esto, el agente queda offline hasta que enciendas la máquina manualmente. Confirmar también que WSL2 arranca el daemon de OpenClaw automáticamente al reiniciar Windows (Task Scheduler o script de inicio).
 
 ---
@@ -81,7 +81,7 @@ Este es el punto que Qwen señaló correctamente como ambiguo. Opciones reales:
 tunnel: <TUNNEL_ID>
 credentials-file: /home/tu_usuario/.cloudflared/<TUNNEL_ID>.json
 ingress:
-  - hostname: claw.tu-dominio.example
+  - hostname: claw.tu-dominio.ejemplo
     service: http://localhost:<PUERTO_CONFIRMADO>
   - service: http_status:404
 ```

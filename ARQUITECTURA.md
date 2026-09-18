@@ -67,7 +67,7 @@ El vault vive en el filesystem de Windows (accesible por Obsidian nativamente) y
 ## Acceso remoto
 
 - **Telegram**: canal principal para uso diario/rápido, con allowlist restringida a un chat ID.
-- **Cloudflare Tunnel**: expone el gateway a un dominio propio (`claw.tu-dominio.example`) sin abrir puertos en el router, protegido con Cloudflare Access (login obligatorio) y reglas de rate limiting.
+- **Cloudflare Tunnel**: expone el gateway a un dominio propio (`claw.tu-dominio.ejemplo`) sin abrir puertos en el router, protegido con Cloudflare Access (login obligatorio) y reglas de rate limiting.
 
 ## Consideraciones de seguridad en el diseño
 

@@ -5,7 +5,7 @@ Guía paso a paso para levantar el proyecto en Endor PC (Windows 11 + WSL2).
 ## Requisitos previos
 
 - Windows 11 con virtualización habilitada en BIOS.
-- Cuenta de Cloudflare con un dominio propio (`claw.tu-dominio.example`).
+- Cuenta de Cloudflare con un dominio propio (`claw.tu-dominio.ejemplo`).
 - Bot de Telegram creado con @BotFather (guardar el token).
 - API key de Anthropic. Opcional: acceso a Gemini Plus como proveedor alternativo.
 - Cuenta de GitHub con un token de acceso de scope limitado (solo los repos de este proyecto).
@@ -90,13 +90,13 @@ Archivo `~/.cloudflared/config.yml`:
 tunnel: <TUNNEL_ID>
 credentials-file: /home/tu_usuario/.cloudflared/<TUNNEL_ID>.json
 ingress:
-  - hostname: claw.tu-dominio.example
+  - hostname: claw.tu-dominio.ejemplo
     service: http://localhost:<PUERTO_CONFIRMADO_EN_PASO_2>
   - service: http_status:404
 ```
 
 ```bash
-cloudflared tunnel route dns demian claw.tu-dominio.example
+cloudflared tunnel route dns demian claw.tu-dominio.ejemplo
 sudo cloudflared service install
 sudo systemctl enable --now cloudflared
 ```
@@ -122,6 +122,6 @@ Ver `docs/ARQUITECTURA.md` para su configuración y `docs/PLAN-DE-ACCION.md` par
 ## 8. Verificación final
 
 - [ ] Mensaje a Telegram → respuesta del agente.
-- [ ] `https://claw.tu-dominio.example` pide login de Cloudflare Access antes de mostrar el panel.
+- [ ] `https://claw.tu-dominio.ejemplo` pide login de Cloudflare Access antes de mostrar el panel.
 - [ ] Cambios manuales en el vault de Obsidian se reflejan en la siguiente interacción del agente.
 - [ ] `systemctl --user status openclaw-gateway` y `systemctl status cloudflared` ambos activos tras un reinicio de Windows.
