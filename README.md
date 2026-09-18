@@ -14,19 +14,19 @@ Corre en hardware local (Endor PC, Windows 11 + WSL2) sin depender de servicios 
 
 ## Arquitectura
 
-Ver [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) para el detalle de cómo se comunican el orquestador y los sub-agentes, y qué hace cada uno.
+Ver [`ARQUITECTURA.md`](ARQUITECTURA.md) para el detalle de cómo se comunican el orquestador y los sub-agentes, y qué hace cada uno.
 
 ## Instalación
 
-Ver [`docs/INSTALACION.md`](docs/INSTALACION.md) para el paso a paso completo (WSL2, OpenClaw, Telegram, Cloudflare Tunnel).
+Ver [`INSTALACION.md`](INSTALACION.md) para el paso a paso completo (WSL2, OpenClaw, Telegram, Cloudflare Tunnel).
 
 ## Seguridad
 
-Ver [`docs/SEGURIDAD.md`](docs/SEGURIDAD.md) — política de accesos, defensas contra prompt injection y abuso, y checklist de mantenimiento.
+Ver [`SEGURIDAD.md`](SEGURIDAD.md) — política de accesos, defensas contra prompt injection y abuso, y checklist de mantenimiento.
 
 ## Plan de acción
 
-Ver [`docs/PLAN-DE-ACCION.md`](docs/PLAN-DE-ACCION.md) para el roadmap completo por fases, con estado de avance.
+Ver [`PLAN-DE-ACCION.md`](PLAN-DE-ACCION.md) para el roadmap completo por fases, con estado de avance.
 
 ## Estructura del repo
 
@@ -35,11 +35,11 @@ demian/
 ├── README.md
 ├── .env.example          # variables de entorno de ejemplo (sin valores reales)
 ├── .gitignore
-└── docs/
-    ├── ARQUITECTURA.md
-    ├── INSTALACION.md
-    ├── SEGURIDAD.md
-    └── PLAN-DE-ACCION.md
+├── ARQUITECTURA.md
+├── INSTALACION.md
+├── SEGURIDAD.md
+├── PLAN-DE-ACCION.md
+└── BITACORA-INSTALACION.md
 ```
 
 > Nota: el vault de Obsidian (diario, notas de universidad) vive en un repositorio **privado separado**, no en este repo. Este repo es la documentación pública/portafolio del proyecto de infraestructura del agente.
@@ -50,4 +50,4 @@ demian/
 
 ## Licencia
 
-Pendiente de definir (sugerido: MIT si el objetivo es que sirva de referencia pública).
+MIT — ver [`LICENSE`](LICENSE).
